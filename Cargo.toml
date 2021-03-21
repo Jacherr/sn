@@ -1,0 +1,15 @@
+[package]
+name = "sn"
+version = "0.1.0"
+authors = ["Jacherr"]
+edition = "2018"
+license-file = "LICENSE"
+description = "soon-to-be json parser"
+homepage = "https://github.com/Jacherr/sn"
+documentation = "https://docs.rs/sn"
+repository = "https://github.com/Jacherr/sn"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
