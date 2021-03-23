@@ -200,6 +200,20 @@ impl<T: Clone> OwnedStream<T> {
         };
         data.unwrap().clone()
     }
+
+    /// Returns the next element as an owned value, and panicks if out of range
+    pub fn next_owned(&mut self) -> Option<T> {
+        let data = self.data.get(self.index + 1);
+        if data.is_some() {
+            self.index += 1
+        };
+        data.cloned()
+    }
+
+    /// Returns a reference to the next entry in the stream
+    pub fn peek_owned(&self) -> Option<T> {
+        self.data.get(self.position() + 1).cloned()
+    }
 }
 
 impl<'a, T> OwnedStream<T> {

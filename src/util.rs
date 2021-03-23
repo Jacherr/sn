@@ -11,8 +11,7 @@ pub mod constants {
         pub const ARRAY_DELIMITER: u8 = b',';
         pub const OBJECT_OPEN: u8 = b'{';
         pub const OBJECT_CLOSE: u8 = b'}';
-        // this isnt useful because its the same as array delim
-        // pub const OBJECT_ENTRY_DELIMITER: u8 = b',';
+        pub const OBJECT_ENTRY_DELIMITER: u8 = b',';
         pub const OBJECT_KV_DELIMITER: u8 = b':';
         pub const STRING_BOUNDARY: u8 = b'"';
         pub const ESCAPE: u8 = b'\\';

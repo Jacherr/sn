@@ -13,11 +13,12 @@ mod tests {
     use crate::parser::*;
     #[test]
     fn lexer_test() {
-        let raw = &read("./test/large.json").unwrap();
+        let raw = &read("./test/twitter.json").unwrap();
         let json = String::from_utf8_lossy(raw);
         let mut lexer = Lexer::new(&json);
-        let out = lexer.as_lexed();
-        if out.is_err() { println!("{:?}", out) };
+        let lexed = lexer.as_lexed().unwrap();
+        let out = Parser::new(lexed).parse();
+        assert_eq!(out.is_ok(), true)
     }
     #[bench]
     fn twitter(b: &mut test::Bencher) {
@@ -25,7 +26,8 @@ mod tests {
         let json = test::black_box(String::from_utf8_lossy(raw));
         b.iter(|| {
           let mut lexer = Lexer::new(&json);
-          lexer.as_lexed()
+          let lexed = lexer.as_lexed().unwrap();
+          Parser::new(lexed).parse();
         });
     }
     #[bench]
@@ -34,7 +36,8 @@ mod tests {
         let json = test::black_box(String::from_utf8_lossy(raw));
         b.iter(|| {
           let mut lexer = Lexer::new(&json);
-          lexer.as_lexed()
+          let lexed = lexer.as_lexed().unwrap();
+          Parser::new(lexed).parse();
         });
     }
     #[bench]
@@ -43,7 +46,8 @@ mod tests {
         let json = test::black_box(String::from_utf8_lossy(raw));
         b.iter(|| {
           let mut lexer = Lexer::new(&json);
-          lexer.as_lexed()
+          let lexed = lexer.as_lexed().unwrap();
+          Parser::new(lexed).parse();
         });
     }
     #[bench]
@@ -52,7 +56,8 @@ mod tests {
         let json = test::black_box(String::from_utf8_lossy(raw));
         b.iter(|| {
           let mut lexer = Lexer::new(&json);
-          lexer.as_lexed()
+          let lexed = lexer.as_lexed().unwrap();
+          Parser::new(lexed).parse();
         });
     }
 }
