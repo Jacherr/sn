@@ -1,7 +1,7 @@
 use self::constants::punctuators;
 
 pub mod constants {
-    pub const WHITESPACE: &[u8; 2] = &[b' ', b'\n'];
+    pub const WHITESPACE: &[u8; 4] = &[b' ', b'\n', b'\r', b'\t'];
     pub const NULL: &[u8] = "null".as_bytes();
     pub const TRUE: &[u8] = "true".as_bytes();
     pub const FALSE: &[u8] = "false".as_bytes();
@@ -18,6 +18,7 @@ pub mod constants {
         pub const ESCAPE: u8 = b'\\';
         pub const NUMBER_DECIMAL_DELIMITER: u8 = b'.';
         pub const NEGATIVE: u8 = b'-';
+        pub const EXPONENT: u8 = b'e';
     }
 }
 
@@ -26,7 +27,7 @@ pub fn is_numeric(input: u8) -> bool {
 }
 
 pub fn is_numeric_or_decimal_point(input: u8) -> bool {
-    (b'0'..=b'9').contains(&input) || input == punctuators::NUMBER_DECIMAL_DELIMITER
+    (b'0'..=b'9').contains(&input) || input == punctuators::NUMBER_DECIMAL_DELIMITER || input == punctuators::EXPONENT
 }
 
 pub fn is_numeric_or_negative(input: u8) -> bool {

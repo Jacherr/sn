@@ -39,6 +39,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /* 
     pub fn parse(&mut self) -> Result<Value, String> {
         if self.stream.is_eof() { return Ok(Value::Nothing) };
 
@@ -51,7 +52,8 @@ impl<'a> Parser<'a> {
             LexedSymbol::Punctuator(_) => self.parse_expression()
         }
     }
-
+    */
+    
     fn parse_expression(&mut self) -> Result<Value, String> {
         todo!()
     }

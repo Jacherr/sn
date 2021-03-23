@@ -13,11 +13,11 @@ mod tests {
     use crate::parser::*;
     #[test]
     fn lexer_test() {
-        let raw = &read("./test/twitter.json").unwrap();
+        let raw = &read("./test/large.json").unwrap();
         let json = String::from_utf8_lossy(raw);
         let mut lexer = Lexer::new(&json);
         let out = lexer.as_lexed();
-        println!("{:?}", out);
+        if out.is_err() { println!("{:?}", out) };
     }
     #[bench]
     fn twitter(b: &mut test::Bencher) {
@@ -40,6 +40,15 @@ mod tests {
     #[bench]
     fn canada(b: &mut test::Bencher) {
         let raw = &read("./test/canada.json").unwrap();
+        let json = test::black_box(String::from_utf8_lossy(raw));
+        b.iter(|| {
+          let mut lexer = Lexer::new(&json);
+          lexer.as_lexed()
+        });
+    }
+    #[bench]
+    fn large(b: &mut test::Bencher) {
+        let raw = &read("./test/large.json").unwrap();
         let json = test::black_box(String::from_utf8_lossy(raw));
         b.iter(|| {
           let mut lexer = Lexer::new(&json);
