@@ -1,13 +1,12 @@
-use crate::{
-    bytes::BorrowedBytes,
-    stream::Stream,
-    util::{
+use crate::{bytes::BorrowedBytes, stream::{OwnedStream, Stream}, util::{
         constants::{punctuators::*, *},
         is_numeric, is_numeric_or_decimal_point, is_numeric_or_negative,
-    },
-};
+    }};
 use std::collections::HashMap;
-#[derive(Debug)]
+pub enum ParseError {
+
+}
+#[derive(Debug, Clone)]
 pub enum LexedSymbol<'a> {
     Punctuator(u8),
     String(BorrowedBytes<'a>),
@@ -30,31 +29,61 @@ pub enum Value<'a> {
 pub type LexedJson<'a> = Vec<LexedSymbol<'a>>;
 
 struct Parser<'a> {
-    stream: Stream<'a, LexedSymbol<'a>>,
+    stream: OwnedStream<LexedSymbol<'a>>,
 }
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a LexedJson<'a>) -> Parser {
+    pub fn new(input: LexedJson<'a>) -> Parser {
         Parser {
-            stream: Stream::new(&input),
+            stream: OwnedStream::new(input),
         }
     }
 
-    /* 
     pub fn parse(&mut self) -> Result<Value, String> {
         if self.stream.is_eof() { return Ok(Value::Nothing) };
 
         let initial = self.stream.current().unwrap();
+
         match initial {
             LexedSymbol::Boolean(b) => Ok(Value::Boolean(*b)),
             LexedSymbol::Null => Ok(Value::Null),
             LexedSymbol::Number(n) => Ok(Value::Number(*n)),
-            LexedSymbol::String(s) => Ok(Value::String(*s)),
-            LexedSymbol::Punctuator(_) => self.parse_expression()
+            LexedSymbol::String(_) => {
+                let sym = self.stream.current_owned_unchecked();
+                match sym {
+                    LexedSymbol::String(s) => Ok(Value::String(s)),
+                    _ => unreachable!()
+                }
+            },
+            LexedSymbol::Punctuator(p) => { let x = *p; self.parse_from_punctuator(x) }
         }
     }
-    */
-    
-    fn parse_expression(&mut self) -> Result<Value, String> {
+
+    fn parse_from_punctuator(&mut self, punctuator: u8) -> Result<Value, String> {
+        match punctuator {
+            ARRAY_OPEN => {
+
+            },
+            OBJECT_OPEN => {},
+            _ => { return Err(format!("unexpected symbol {} at position {}", punctuator as char, self.stream.position()))}
+        }
+
+        todo!()
+    }
+
+    fn parse_array(&mut self) -> Result<Value, String> {
+        // at this point the stream is pointing at the opening punctuator for the array.
+        let mut inner: Vec<Value> = vec![];
+
+        while !self.stream.is_eof() {
+            let next = self.stream.next_owned_unchecked();
+            match next {
+                LexedSymbol::Punctuator(p) => {
+
+                },
+                _ => {}//inner.push(self.parse()?)
+            }
+        }
+
         todo!()
     }
 
