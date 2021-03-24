@@ -150,7 +150,6 @@ impl<'a> Parser<'a> {
                     if p == OBJECT_CLOSE && is_first_entry {
                         break;
                     }
-                    println!("d");
                     return Err(ParseError::UnexpectedSymbol(p))
                 },
                 _ => return Err(ParseError::UnexpectedValue(try_key))
