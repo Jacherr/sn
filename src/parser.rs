@@ -8,20 +8,32 @@ use crate::{
 };
 use std::collections::HashMap;
 #[derive(Debug)]
-pub enum ParseError<'a> {
+/// An error returned by the parser
+/// in the event that the input JSON is malformed.
+pub enum ParseError {
+    /// The parser encountered a symbol (character) in a place it wasn't expecting.
     UnexpectedSymbol(u8),
+    /// The parser reached the end of the input prematurely.
     UnexpectedEndOfInput,
-    ObjectDuplicateKey(BorrowedBytes<'a>),
+    /// An internal error that gets thrown if a number somehow fails to parse.
+    /// If this is returned, please open an issue.
     NumberParseError
 }
 
+/// A value as represented in parsed JSON.
 #[derive(Debug, PartialEq)]
 pub enum Value<'a> {
+    /// A string, composed of bytes borrowed from the input.
     String(BorrowedBytes<'a>),
+    /// A 64-bit precision floating point number.
     Number(f64),
+    /// A boolean.
     Boolean(bool),
+    /// An object, represented as a HashMap of a String to a Value.
     Object(HashMap<BorrowedBytes<'a>, Value<'a>>),
+    /// An array, represented as a Vec of Values.
     Array(Vec<Value<'a>>),
+    /// Null (No value).
     Null,
     /// This value is used if the input is empty,
     /// and also internally for parsing arrays and objects to signal that no
@@ -29,10 +41,14 @@ pub enum Value<'a> {
     Nothing,
 }
 
+/// The parser itself. Create a new parser with the `new` method,
+/// and parse it using the `parse` method.
 pub struct Parser<'a> {
     stream: Stream<'a, u8>,
 }
 impl<'a> Parser<'a> {
+    /// Create a new parser from raw JSON encoded as a Vec of u8s
+    /// THIS IS SUBJECT TO CHANGE.
     pub fn new(input: &'a [u8]) -> Parser {
         Parser {
             stream: Stream::new(input),
@@ -40,7 +56,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a single Value.
-    pub fn parse(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    /// This function DOES NOT consume self as it is called recursively.
+    /// However, calling this function more than once from outside of the struct
+    /// will break it! This will be fixed in an upcoming release.
+    pub fn parse(&mut self) -> Result<Value<'a>, ParseError> {
         self.skip_whitespace_no_eof()?;
 
         let initial = self.stream.current_unchecked();
@@ -60,7 +79,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_from_punctuator(&mut self, punctuator: u8) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_from_punctuator(&mut self, punctuator: u8) -> Result<Value<'a>, ParseError> {
         match punctuator {
             ARRAY_OPEN => { self.parse_array() }
             OBJECT_OPEN => { self.parse_object() }
@@ -68,7 +87,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_array(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_array(&mut self) -> Result<Value<'a>, ParseError> {
         // at this point the stream is pointing at the opening punctuator for the array.
         let mut inner: Vec<Value> = vec![];
         let mut has_read_initial= false;
@@ -106,7 +125,7 @@ impl<'a> Parser<'a> {
     fn parse_array_punctuator(
         &mut self,
         punctuator: u8,
-    ) -> Result<Value<'a>, ParseError<'a>> {
+    ) -> Result<Value<'a>, ParseError> {
         match punctuator {
             ARRAY_CLOSE => Ok(Value::Nothing),
             ARRAY_DELIMITER => {
@@ -119,7 +138,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_boolean(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_boolean(&mut self) -> Result<Value<'a>, ParseError> {
         let next_4 = self.stream.slice_len(self.stream.position(), 4);
         if next_4.eq(TRUE) { 
             self.stream.skip_n(3);
@@ -132,7 +151,7 @@ impl<'a> Parser<'a> {
         else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked())) }
     }
 
-    fn parse_null(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_null(&mut self) -> Result<Value<'a>, ParseError> {
         let next_4 = self.stream.slice_len(self.stream.position(), 4);
         if next_4.eq(NULL) { 
             self.stream.skip_n(3);
@@ -140,7 +159,7 @@ impl<'a> Parser<'a> {
         } else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked())) }
     }
 
-    fn parse_number(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_number(&mut self) -> Result<Value<'a>, ParseError> {
         let start = self.stream.position();
         let mut is_first_iteration = true;
         self.skip_whitespace_no_eof()?;
@@ -170,7 +189,7 @@ impl<'a> Parser<'a> {
         Err(ParseError::NumberParseError)
     }
 
-    fn parse_object(&mut self) -> Result<Value<'a>, ParseError<'a>> {
+    fn parse_object(&mut self) -> Result<Value<'a>, ParseError> {
         let mut inner: HashMap<BorrowedBytes<'a>, Value<'a>> = HashMap::new();
 
         let mut is_first_entry = true;
@@ -202,11 +221,6 @@ impl<'a> Parser<'a> {
                 }
                 _ => return Err(ParseError::UnexpectedSymbol(next))
             }
-
-            // check if key is already used - not valid in json
-            if inner.contains_key(&key) {
-                return Err(ParseError::ObjectDuplicateKey(key));
-            };
 
             // still on string closing boundary
             self.stream.skip();
@@ -246,7 +260,7 @@ impl<'a> Parser<'a> {
         Ok(Value::Object(inner))
     }
 
-    fn parse_string(&mut self) -> Result<BorrowedBytes<'a>, ParseError<'a>> {
+    fn parse_string(&mut self) -> Result<BorrowedBytes<'a>, ParseError> {
         let start = self.stream.position() + 1;
 
         while !self.stream.is_eof() {
@@ -265,7 +279,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Skips whitespace and checks if there is anything left.
-    fn skip_whitespace_no_eof(&mut self) -> Result<(), ParseError<'a>> {
+    fn skip_whitespace_no_eof(&mut self) -> Result<(), ParseError> {
         while !self.stream.is_eof() {
             let character = self.stream.current_unchecked();
             if !WHITESPACE.contains(&character) {

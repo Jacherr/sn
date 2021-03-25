@@ -1,5 +1,7 @@
 use std::cmp::min;
 
+/// A data stream.
+/// Used by the Parser to iterate over the supplied JSON data and to parse it into Values.
 pub struct Stream<'a, T> {
     index: usize,
     data: &'a [T],

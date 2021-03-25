@@ -1,5 +1,6 @@
 use self::constants::punctuators;
 
+/// a
 pub mod constants {
     pub const WHITESPACE: &[u8; 4] = &[b' ', b'\n', b'\r', b'\t'];
     pub const NULL: &[u8] = "null".as_bytes();
