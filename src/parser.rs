@@ -20,8 +20,8 @@ pub enum ParseError {
     NumberParseError
 }
 
-/// A value as represented in parsed JSON.
 #[derive(Debug, PartialEq)]
+/// A value as represented in parsed JSON.
 pub enum Value<'a> {
     /// A string, composed of bytes borrowed from the input.
     String(BorrowedBytes<'a>),
