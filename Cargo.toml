@@ -1,10 +1,10 @@
 [package]
 name = "sn"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacherr"]
 edition = "2018"
 license-file = "LICENSE"
-description = "soon-to-be json parser"
+description = "zero-copy JSON parser"
 homepage = "https://github.com/Jacherr/sn"
 documentation = "https://docs.rs/sn"
 repository = "https://github.com/Jacherr/sn"
