@@ -3,7 +3,7 @@ use crate::{
     stream::Stream,
     util::{
         constants::{punctuators::*, *},
-        is_numeric_or_decimal_point, is_numeric_or_negative,
+        is_numeric_like, is_numeric_or_negative,
     },
 };
 use std::collections::HashMap;
@@ -79,16 +79,16 @@ impl<'a> Parser<'a> {
 
     fn parse_from_punctuator(&mut self, punctuator: u8) -> Result<Value<'a>, ParseError> {
         match punctuator {
-            ARRAY_OPEN => { self.parse_array() }
-            OBJECT_OPEN => { self.parse_object() }
-            _ => return Err(ParseError::UnexpectedSymbol(punctuator as char)),
+            ARRAY_OPEN => self.parse_array(),
+            OBJECT_OPEN => self.parse_object(),
+            _ => Err(ParseError::UnexpectedSymbol(punctuator as char)),
         }
     }
 
     fn parse_array(&mut self) -> Result<Value<'a>, ParseError> {
         // at this point the stream is pointing at the opening punctuator for the array.
         let mut inner: Vec<Value> = vec![];
-        let mut has_read_initial= false;
+        let mut has_read_initial = false;
 
         while !self.stream.is_eof() {
             self.stream.skip();
@@ -120,41 +120,46 @@ impl<'a> Parser<'a> {
         Ok(Value::Array(inner))
     }
 
-    fn parse_array_punctuator(
-        &mut self,
-        punctuator: u8,
-    ) -> Result<Value<'a>, ParseError> {
+    fn parse_array_punctuator(&mut self, punctuator: u8) -> Result<Value<'a>, ParseError> {
         match punctuator {
             ARRAY_CLOSE => Ok(Value::Nothing),
             ARRAY_DELIMITER => {
                 // we're on the delimiter, must skip past it to get to the expression to parse
                 self.stream.skip();
-                if self.stream.is_eof() { return Err(ParseError::UnexpectedEndOfInput) }
+                if self.stream.is_eof() {
+                    return Err(ParseError::UnexpectedEndOfInput);
+                }
                 Ok(self.parse()?)
             }
-            _ => return self.parse_from_punctuator(punctuator),
+            _ => self.parse_from_punctuator(punctuator),
         }
     }
 
     fn parse_boolean(&mut self) -> Result<Value<'a>, ParseError> {
         let next_4 = self.stream.slice_len(self.stream.position(), 4);
-        if next_4.eq(TRUE) { 
+        if next_4.eq(TRUE) {
             self.stream.skip_n(3);
             Ok(Value::Boolean(true))
-        }
-        else if self.stream.slice_len(self.stream.position(), 5).eq(FALSE) { 
+        } else if self.stream.slice_len(self.stream.position(), 5).eq(FALSE) {
             self.stream.skip_n(4);
             Ok(Value::Boolean(false))
+        } else {
+            Err(ParseError::UnexpectedSymbol(
+                self.stream.current_unchecked() as char,
+            ))
         }
-        else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked() as char)) }
     }
 
     fn parse_null(&mut self) -> Result<Value<'a>, ParseError> {
         let next_4 = self.stream.slice_len(self.stream.position(), 4);
-        if next_4.eq(NULL) { 
+        if next_4.eq(NULL) {
             self.stream.skip_n(3);
             Ok(Value::Null)
-        } else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked() as char)) }
+        } else {
+            Err(ParseError::UnexpectedSymbol(
+                self.stream.current_unchecked() as char,
+            ))
+        }
     }
 
     fn parse_number(&mut self) -> Result<Value<'a>, ParseError> {
@@ -165,9 +170,12 @@ impl<'a> Parser<'a> {
         while !self.stream.is_eof() {
             let next_char = self.stream.current_unchecked();
 
-            if next_char == NEGATIVE && is_first_iteration { self.stream.skip(); continue; }
+            if next_char == NEGATIVE && is_first_iteration {
+                self.stream.skip();
+                continue;
+            }
 
-            if !is_numeric_or_decimal_point(next_char) || self.stream.peek().is_none() {
+            if !is_numeric_like(next_char) || self.stream.peek().is_none() {
                 let res = Ok(Value::Number(
                     std::str::from_utf8(self.stream.slice_unchecked(start, self.stream.position()))
                         .ok()
@@ -177,7 +185,7 @@ impl<'a> Parser<'a> {
                         .unwrap(),
                 ));
                 self.stream.unskip();
-                return res
+                return res;
             }
 
             self.stream.skip();
@@ -212,12 +220,12 @@ impl<'a> Parser<'a> {
                     // { "key": "value" } because another check for } is made
                     // later in this loop.
                     if !is_first_entry {
-                        return Err(ParseError::UnexpectedSymbol(next as char))
+                        return Err(ParseError::UnexpectedSymbol(next as char));
                     } else {
-                        return Ok(Value::Object(inner))
+                        return Ok(Value::Object(inner));
                     }
                 }
-                _ => return Err(ParseError::UnexpectedSymbol(next as char))
+                _ => return Err(ParseError::UnexpectedSymbol(next as char)),
             }
 
             // still on string closing boundary
@@ -226,7 +234,9 @@ impl<'a> Parser<'a> {
             self.skip_whitespace_no_eof()?;
 
             next = self.stream.current_unchecked();
-            if next != OBJECT_KV_DELIMITER { return Err(ParseError::UnexpectedSymbol(next as char)) };
+            if next != OBJECT_KV_DELIMITER {
+                return Err(ParseError::UnexpectedSymbol(next as char));
+            };
 
             // next entry in the data should be the value itself, but this can be any type so we will just parse it
             // we are still on the divider at this stage so we will skip to the start of the value
@@ -247,11 +257,11 @@ impl<'a> Parser<'a> {
                 OBJECT_ENTRY_DELIMITER => {
                     is_first_entry = false;
                     continue;
-                },
+                }
                 OBJECT_CLOSE => {
                     break;
-                },
-                _ => return Err(ParseError::UnexpectedSymbol(next as char))
+                }
+                _ => return Err(ParseError::UnexpectedSymbol(next as char)),
             }
         }
 
@@ -285,7 +295,10 @@ impl<'a> Parser<'a> {
             }
             self.stream.skip();
         }
-        if self.stream.is_eof() { Err(ParseError::UnexpectedEndOfInput) }
-        else { Ok(()) }
+        if self.stream.is_eof() {
+            Err(ParseError::UnexpectedEndOfInput)
+        } else {
+            Ok(())
+        }
     }
 }

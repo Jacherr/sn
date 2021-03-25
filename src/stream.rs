@@ -79,9 +79,9 @@ impl<'a, T> Stream<'a, T> {
     pub fn length(&self) -> usize {
         self.data.len()
     }
- 
+
     /// Returns the next element
-    pub fn next(&mut self) -> Option<&T> {
+    pub fn next_entry(&mut self) -> Option<&T> {
         self.data.get(self.index + 1).map(|c| {
             self.skip();
             c

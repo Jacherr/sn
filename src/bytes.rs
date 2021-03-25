@@ -17,9 +17,7 @@ impl<'a> From<&'a [u8]> for Bytes<'a> {
 
 impl<'a> Debug for Bytes<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Bytes")
-            .field(&self.as_utf8_str())
-            .finish()
+        f.debug_tuple("Bytes").field(&self.as_utf8_str()).finish()
     }
 }
 

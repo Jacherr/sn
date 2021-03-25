@@ -25,8 +25,11 @@ pub mod constants {
     }
 }
 
-pub fn is_numeric_or_decimal_point(input: u8) -> bool {
-    (b'0'..=b'9').contains(&input) || input == punctuators::NUMBER_DECIMAL_DELIMITER || input == punctuators::EXPONENT
+pub fn is_numeric_like(input: u8) -> bool {
+    (b'0'..=b'9').contains(&input)
+        || input == punctuators::NUMBER_DECIMAL_DELIMITER
+        || input == punctuators::EXPONENT
+        || input == punctuators::NEGATIVE
 }
 
 pub fn is_numeric_or_negative(input: u8) -> bool {
