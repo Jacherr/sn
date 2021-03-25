@@ -99,7 +99,7 @@ impl<'a, T> Stream<'a, T> {
         self.data.get(self.position() + 1)
     }
 
-    /// Returns a reference to the perevious entry in the stream
+    /// Returns a reference to the previous entry in the stream
     pub fn peek_back(&self) -> Option<&T> {
         self.data.get(self.position() - 1)
     }

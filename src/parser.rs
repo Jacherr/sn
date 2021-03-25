@@ -1,5 +1,5 @@
 use crate::{
-    bytes::BorrowedBytes,
+    bytes::Bytes,
     stream::Stream,
     util::{
         constants::{punctuators::*, *},
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 /// in the event that the input JSON is malformed.
 pub enum ParseError {
     /// The parser encountered a symbol (character) in a place it wasn't expecting.
-    UnexpectedSymbol(u8),
+    UnexpectedSymbol(char),
     /// The parser reached the end of the input prematurely.
     UnexpectedEndOfInput,
     /// An internal error that gets thrown if a number somehow fails to parse.
@@ -24,20 +24,18 @@ pub enum ParseError {
 /// A value as represented in parsed JSON.
 pub enum Value<'a> {
     /// A string, composed of bytes borrowed from the input.
-    String(BorrowedBytes<'a>),
+    String(Bytes<'a>),
     /// A 64-bit precision floating point number.
     Number(f64),
     /// A boolean.
     Boolean(bool),
     /// An object, represented as a HashMap of a String to a Value.
-    Object(HashMap<BorrowedBytes<'a>, Value<'a>>),
+    Object(HashMap<Bytes<'a>, Value<'a>>),
     /// An array, represented as a Vec of Values.
     Array(Vec<Value<'a>>),
     /// Null (No value).
     Null,
-    /// This value is used if the input is empty,
-    /// and also internally for parsing arrays and objects to signal that no
-    /// next entry exists.
+    /// The supplied JSON is completely empty.
     Nothing,
 }
 
@@ -57,8 +55,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a single Value.
     /// This function DOES NOT consume self as it is called recursively.
-    /// However, calling this function more than once from outside of the struct
-    /// will break it! This will be fixed in an upcoming release.
+    /// However,this function is only designed to be called externally once.
+    /// This will be fixed in an upcoming release.
     pub fn parse(&mut self) -> Result<Value<'a>, ParseError> {
         self.skip_whitespace_no_eof()?;
 
@@ -73,7 +71,7 @@ impl<'a> Parser<'a> {
                 if is_numeric_or_negative(initial) {
                     self.parse_number()
                 } else {
-                    Err(ParseError::UnexpectedSymbol(initial))
+                    Err(ParseError::UnexpectedSymbol(initial as char))
                 }
             }
         }
@@ -83,7 +81,7 @@ impl<'a> Parser<'a> {
         match punctuator {
             ARRAY_OPEN => { self.parse_array() }
             OBJECT_OPEN => { self.parse_object() }
-            _ => return Err(ParseError::UnexpectedSymbol(punctuator)),
+            _ => return Err(ParseError::UnexpectedSymbol(punctuator as char)),
         }
     }
 
@@ -113,7 +111,7 @@ impl<'a> Parser<'a> {
                         inner.push(self.parse()?);
                         has_read_initial = true;
                     } else {
-                        return Err(ParseError::UnexpectedSymbol(next));
+                        return Err(ParseError::UnexpectedSymbol(next as char));
                     }
                 }
             }
@@ -148,7 +146,7 @@ impl<'a> Parser<'a> {
             self.stream.skip_n(4);
             Ok(Value::Boolean(false))
         }
-        else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked())) }
+        else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked() as char)) }
     }
 
     fn parse_null(&mut self) -> Result<Value<'a>, ParseError> {
@@ -156,7 +154,7 @@ impl<'a> Parser<'a> {
         if next_4.eq(NULL) { 
             self.stream.skip_n(3);
             Ok(Value::Null)
-        } else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked())) }
+        } else { Err(ParseError::UnexpectedSymbol(self.stream.current_unchecked() as char)) }
     }
 
     fn parse_number(&mut self) -> Result<Value<'a>, ParseError> {
@@ -190,7 +188,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_object(&mut self) -> Result<Value<'a>, ParseError> {
-        let mut inner: HashMap<BorrowedBytes<'a>, Value<'a>> = HashMap::new();
+        let mut inner: HashMap<Bytes<'a>, Value<'a>> = HashMap::new();
 
         let mut is_first_entry = true;
 
@@ -202,7 +200,7 @@ impl<'a> Parser<'a> {
             // the value read here should always be a string boundary
             let mut next = self.stream.current_unchecked();
 
-            let key: BorrowedBytes<'a>;
+            let key: Bytes<'a>;
 
             // checking that the key is a string or if this is an empty object
             match next {
@@ -214,12 +212,12 @@ impl<'a> Parser<'a> {
                     // { "key": "value" } because another check for } is made
                     // later in this loop.
                     if !is_first_entry {
-                        return Err(ParseError::UnexpectedSymbol(next))
+                        return Err(ParseError::UnexpectedSymbol(next as char))
                     } else {
                         return Ok(Value::Object(inner))
                     }
                 }
-                _ => return Err(ParseError::UnexpectedSymbol(next))
+                _ => return Err(ParseError::UnexpectedSymbol(next as char))
             }
 
             // still on string closing boundary
@@ -228,7 +226,7 @@ impl<'a> Parser<'a> {
             self.skip_whitespace_no_eof()?;
 
             next = self.stream.current_unchecked();
-            if next != OBJECT_KV_DELIMITER { return Err(ParseError::UnexpectedSymbol(next)) };
+            if next != OBJECT_KV_DELIMITER { return Err(ParseError::UnexpectedSymbol(next as char)) };
 
             // next entry in the data should be the value itself, but this can be any type so we will just parse it
             // we are still on the divider at this stage so we will skip to the start of the value
@@ -253,14 +251,14 @@ impl<'a> Parser<'a> {
                 OBJECT_CLOSE => {
                     break;
                 },
-                _ => return Err(ParseError::UnexpectedSymbol(next))
+                _ => return Err(ParseError::UnexpectedSymbol(next as char))
             }
         }
 
         Ok(Value::Object(inner))
     }
 
-    fn parse_string(&mut self) -> Result<BorrowedBytes<'a>, ParseError> {
+    fn parse_string(&mut self) -> Result<Bytes<'a>, ParseError> {
         let start = self.stream.position() + 1;
 
         while !self.stream.is_eof() {
@@ -269,7 +267,7 @@ impl<'a> Parser<'a> {
             if next_char == ESCAPE {
                 self.stream.skip();
             } else if next_char == STRING_BOUNDARY {
-                return Ok(BorrowedBytes::from(
+                return Ok(Bytes::from(
                     self.stream.slice_unchecked(start, self.stream.position()),
                 ));
             }
