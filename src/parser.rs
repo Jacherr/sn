@@ -165,15 +165,31 @@ impl<'a> Parser<'a> {
     fn parse_number(&mut self) -> Result<Value<'a>, ParseError> {
         let start = self.stream.position();
         let mut is_first_iteration = true;
+        let mut previous_was_exponent = false;
+        let mut have_seen_exponent = false;
         self.skip_whitespace_no_eof()?;
 
         while !self.stream.is_eof() {
             let next_char = self.stream.current_unchecked();
 
-            if next_char == NEGATIVE && is_first_iteration {
-                self.stream.skip();
-                continue;
+            if next_char == NEGATIVE {
+                if is_first_iteration || previous_was_exponent {
+                    self.stream.skip();
+                    continue;
+                } else {
+                    return Err(ParseError::UnexpectedSymbol(next_char as char))
+                }
+            } else if next_char == EXPONENT {
+                if is_first_iteration || have_seen_exponent { return Err(ParseError::UnexpectedSymbol(next_char as char)) };
+                previous_was_exponent = true;
+                have_seen_exponent = true;
+            } else if next_char == POSITIVE {
+                if !previous_was_exponent {
+                    return Err(ParseError::UnexpectedSymbol(next_char as char))
+                }
             }
+
+            if next_char != EXPONENT { previous_was_exponent = false; }
 
             if !is_numeric_like(next_char) || self.stream.peek().is_none() {
                 let res = Ok(Value::Number(

@@ -21,6 +21,7 @@ pub mod constants {
         pub const ESCAPE: u8 = b'\\';
         pub const NUMBER_DECIMAL_DELIMITER: u8 = b'.';
         pub const NEGATIVE: u8 = b'-';
+        pub const POSITIVE: u8 = b'+';
         pub const EXPONENT: u8 = b'e';
     }
 }
