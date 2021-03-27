@@ -30,5 +30,5 @@ Add `sn` to your Cargo.toml:
 
 ```toml
 [dependencies]
-sn = "0.1.1"
+sn = "0.1.3"
 ```

@@ -16,7 +16,6 @@
 //! ## Examples
 //! Loading a JSON file from the filesystem and parsing it into a Value:
 //!
-//!
 //! ```rust
 //! use sn::Parser;
 //!
@@ -43,5 +42,20 @@ mod parser;
 mod stream;
 mod util;
 
-pub use parser::{ParseError, Parser, Value};
-pub use stream::Stream;
+use parser::{AsBytes, ParseError, Parser, StaticParser, Value};
+
+/// Parse a JSON input.
+/// The input may be represented as a &str or as a &[u8].
+/// The output only lives for as long as the input.
+pub fn parse<'a, T: AsBytes>(input: &'a T) -> Result<Value<'a>, ParseError> {
+    let mut parser = Parser::new(input);
+    parser.parse()
+}
+
+/// Statically parse a JSON input.
+/// The input may be represented as a &str or as a &[u8].
+/// This function is marked unsafe because it leaks data and therefore has the potential to segfault.
+pub unsafe fn parse_owned(input: String) -> Result<Value<'static>, ParseError> {
+    let mut parser = StaticParser::new(input);
+    parser.parse()
+}

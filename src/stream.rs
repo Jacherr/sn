@@ -30,35 +30,6 @@ impl<'a, T: Copy> Stream<'a, T> {
     }
 }
 
-impl<'a, T: Eq + Copy> Stream<'a, T> {
-    /// Returns the current character and moves to the next character if the character matches
-    /// the provided input.
-    pub fn next_if_current_is(&mut self, expect: T) -> Option<T> {
-        self.next_if_current_present_in(&[expect])
-    }
-
-    /// Returns the current character and moves to the next character if the character exists
-    /// in the provided array.
-    pub fn next_if_current_present_in(&mut self, expect: &[T]) -> Option<T> {
-        let c = self.current_copied()?;
-
-        if expect.contains(&c) {
-            self.skip();
-            return Some(c);
-        }
-
-        None
-    }
-
-    /// Skips the current character if it matches the input, and returns true in this case.
-    /// Returns false and does not skip if the current character does not match the input.
-    pub fn skip_if_current_is(&mut self, expect: T) -> bool {
-        self.next_if_current_is(expect)
-            .map(|c| c == expect)
-            .unwrap_or(false)
-    }
-}
-
 impl<'a, T> Stream<'a, T> {
     /// Creates a new stream
     pub fn new(data: &'a [T]) -> Stream<T> {
@@ -107,6 +78,11 @@ impl<'a, T> Stream<'a, T> {
     /// The current position of the stream on the data
     pub fn position(&self) -> usize {
         self.index
+    }
+
+    /// Reset the stream read head to index 0.
+    pub fn reset(&mut self) {
+        self.index = 0;
     }
 
     /// Skips the current character and moves on to the next one

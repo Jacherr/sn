@@ -45,19 +45,20 @@ pub struct Parser<'a> {
     stream: Stream<'a, u8>,
 }
 impl<'a> Parser<'a> {
-    /// Create a new parser from raw JSON encoded as a Vec of u8s
-    /// THIS IS SUBJECT TO CHANGE.
-    pub fn new(input: &'a [u8]) -> Parser {
+    /// Create a new parser from raw JSON, either as a &str or as a &[u8].
+    pub fn new<T: AsBytes + ?Sized>(input: &'a T) -> Parser {
         Parser {
-            stream: Stream::new(input),
+            stream: Stream::new(input.bytes()),
         }
     }
 
-    /// Parse a single Value.
-    /// This function DOES NOT consume self as it is called recursively.
-    /// However,this function is only designed to be called externally once.
-    /// This will be fixed in an upcoming release.
+    /// Parse a single Value from the start of the input.
     pub fn parse(&mut self) -> Result<Value<'a>, ParseError> {
+        self.stream.reset();
+        self.parse_val()         
+    }
+
+    fn parse_val(&mut self) -> Result<Value<'a>, ParseError> {
         self.skip_whitespace_no_eof()?;
 
         let initial = self.stream.current_unchecked();
@@ -108,7 +109,7 @@ impl<'a> Parser<'a> {
                     // this guard exists to allow the first element to not be delimited (a.k.a [1])
                     // but disallows subsequent elements from not being delimited (a.k.a [1 1])
                     if !has_read_initial {
-                        inner.push(self.parse()?);
+                        inner.push(self.parse_val()?);
                         has_read_initial = true;
                     } else {
                         return Err(ParseError::UnexpectedSymbol(next as char));
@@ -129,7 +130,7 @@ impl<'a> Parser<'a> {
                 if self.stream.is_eof() {
                     return Err(ParseError::UnexpectedEndOfInput);
                 }
-                Ok(self.parse()?)
+                Ok(self.parse_val()?)
             }
             _ => self.parse_from_punctuator(punctuator),
         }
@@ -259,7 +260,7 @@ impl<'a> Parser<'a> {
             self.stream.skip();
             self.skip_whitespace_no_eof()?;
 
-            let value = self.parse()?;
+            let value = self.parse_val()?;
             inner.insert(key, value);
 
             self.stream.skip();
@@ -316,5 +317,51 @@ impl<'a> Parser<'a> {
         } else {
             Ok(())
         }
+    }
+}
+
+/// A parser that converts the input String to a static str, so that the
+/// struct may live for as long as is necessary and beyond the lifetime of
+/// the input String.
+/// This is useful if you intend to store the output this parser in a struct
+/// or similar.
+pub struct StaticParser {
+    parser: Parser<'static>,
+    ptr: *mut str
+}
+impl StaticParser {
+    /// Create a new static parser instance.
+    pub unsafe fn new(input: String) -> Self {
+        let ptr: *mut str = Box::into_raw(input.into_boxed_str());
+        let data = &*ptr;
+        StaticParser {
+            parser: Parser::new(data),
+            ptr
+        }
+    }
+
+    /// Parses a single Value from the start of the input using the inner Parser instance.
+    pub fn parse(&mut self) -> Result<Value<'static>, ParseError> {
+        self.parser.parse()
+    }
+}
+impl Drop for StaticParser {
+    fn drop(&mut self) {
+       unsafe { Box::from_raw(self.ptr) };
+    }
+}
+
+pub trait AsBytes {
+    fn bytes<'a>(&'a self) -> &'a [u8];
+}
+
+impl AsBytes for str {
+    fn bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+}
+impl AsBytes for [u8] {
+    fn bytes<'a>(&'a self) -> &'a [u8] {
+        self
     }
 }
